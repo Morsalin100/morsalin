@@ -1,81 +1,131 @@
-<!DOCTYPE html>
 <html>
 <head>
-  <title>Flappy Bird for Keypad</title>
+  <title>Retro Flappy Bird - 240×320</title>
   <style>
-    body { margin: 0; overflow: hidden; background: skyblue; }
-    canvas { display: block; margin: 0 auto; background: #70c5ce; }
+    body { margin: 0; background: #70c5ce; }
+    canvas { display: block; margin: auto; background: #70c5ce; }
   </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="320" height="480"></canvas>
-
+<canvas id="gameCanvas" width="240" height="320"></canvas>
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-let frames = 0;
-const DEGREE = Math.PI / 180;
+const birdSprite = new Image();
+birdSprite.src = "https://i.imgur.com/OdL0XPt.png"; // 16x16 pixel bird
 
-const sprite = new Image();
-sprite.src = 'https://i.imgur.com/QXxtrcA.png'; // fallback image
+let bird = {
+  x: 40,
+  y: 140,
+  width: 16,
+  height: 16,
+  velocity: 0,
+  gravity: 0.4,
+  lift: -6,
+  update() {
+    this.velocity += this.gravity;
+    this.y += this.velocity;
 
-const bird = {
-  x: 50,
-  y: 150,
-  w: 34,
-  h: 26,
-  gravity: 0.25,
-  jump: 4.6,
-  speed: 0,
-  draw() {
-    ctx.fillStyle = 'yellow';
-    ctx.fillRect(this.x, this.y, this.w, this.h);
+    if (this.y + this.height > canvas.height) {
+      this.y = canvas.height - this.height;
+      this.velocity = 0;
+    }
+    if (this.y < 0) {
+      this.y = 0;
+      this.velocity = 0;
+    }
   },
   flap() {
-    this.speed = -this.jump;
+    this.velocity = this.lift;
   },
-  update() {
-    this.speed += this.gravity;
-    this.y += this.speed;
-    if (this.y + this.h >= canvas.height) {
-      this.y = canvas.height - this.h;
-      this.speed = 0;
-    }
+  draw() {
+    ctx.drawImage(birdSprite, this.x, this.y, this.width, this.height);
   }
 };
 
-document.addEventListener("keydown", function(evt) {
-  if (evt.key === "5") {
-    bird.flap();
+let pipes = [];
+let frameCount = 0;
+let score = 0;
+
+function createPipe() {
+  const gap = 60;
+  const topPipeHeight = Math.random() * (canvas.height - gap - 40) + 20;
+  const pipe = {
+    x: canvas.width,
+    width: 30,
+    top: topPipeHeight,
+    bottom: canvas.height - (topPipeHeight + gap)
+  };
+  pipes.push(pipe);
+}
+
+function updatePipes() {
+  if (frameCount % 90 === 0) {
+    createPipe();
   }
-  if (evt.key === "0") {
-    isPaused = !isPaused;
+
+  pipes.forEach((pipe, index) => {
+    pipe.x -= 2;
+
+    // Collision detection
+    if (
+      bird.x < pipe.x + pipe.width &&
+      bird.x + bird.width > pipe.x &&
+      (bird.y < pipe.top || bird.y + bird.height > canvas.height - pipe.bottom)
+    ) {
+      alert("Game Over! Your Score: " + score);
+      document.location.reload();
+    }
+
+    // Increase score when pipe passes bird
+    if (pipe.x + pipe.width === bird.x) {
+      score++;
+    }
+
+    // Remove offscreen pipes
+    if (pipe.x + pipe.width < 0) {
+      pipes.splice(index, 1);
+    }
+  });
+}
+
+function drawPipe(pipe) {
+  ctx.fillStyle = "green";
+  ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+  ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipe.width, pipe.bottom);
+}
+
+function drawScore() {
+  ctx.fillStyle = "white";
+  ctx.font = "16px monospace";
+  ctx.fillText("Score: " + score, 10, 20);
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "5") {
+    bird.flap();
   }
 });
 
-let isPaused = false;
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-function draw() {
-  ctx.fillStyle = "#70c5ce";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  bird.draw();
-}
-
-function update() {
   bird.update();
+  bird.draw();
+
+  updatePipes();
+  pipes.forEach(drawPipe);
+
+  drawScore();
+
+  frameCount++;
+  requestAnimationFrame(gameLoop);
 }
 
-function loop() {
-  if (!isPaused) {
-    update();
-    draw();
-    frames++;
-  }
-  requestAnimationFrame(loop);
-}
-
-loop();
+birdSprite.onload = () => {
+  gameLoop();
+};
 </script>
 </body>
 </html>
